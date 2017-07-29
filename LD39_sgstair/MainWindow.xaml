@@ -5,8 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:LD39_sgstair"
         mc:Ignorable="d"
-        Title="MainWindow" Height="350" Width="525">
-    <Grid>
+        Title="Dark Lab Escape - LD39" Height="768" Width="1200" Background="Black">
+    <Grid x:Name="grid">
         
     </Grid>
 </Window>

@@ -23,6 +23,66 @@ namespace LD39_sgstair
         public MainWindow()
         {
             InitializeComponent();
+            GameAutomation.PrepareGame(this);
+
+            Closing += MainWindow_Closing;
+            RestoreWindowPosition();
+        }
+
+        private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            // Save window X/Y location for future use.
+            SaveWindowPosition();
+        }
+
+        void SaveWindowPosition()
+        {
+            Properties.Settings.Default.WindowX = Left.ToString();
+            Properties.Settings.Default.WindowY = Top.ToString();
+
+            Properties.Settings.Default.Save();
+        }
+        void RestoreWindowPosition()
+        {
+            int x, y;
+            if(int.TryParse(Properties.Settings.Default.WindowX, out x))
+            {
+                if (int.TryParse(Properties.Settings.Default.WindowY, out y))
+                {
+                    Left = x;
+                    Top = y;
+                }
+            }
+        }
+
+        public void SetContent(FrameworkElement e)
+        {
+            grid.Children.Clear();
+            e.HorizontalAlignment = HorizontalAlignment.Stretch;
+            e.VerticalAlignment = VerticalAlignment.Stretch;
+            e.Margin = new Thickness(0);
+            grid.Children.Add(e);
+        }
+    }
+
+    public class GameAutomation
+    {
+        static MainWindow parentWindow;
+        static GameMenuControl menuControl = new GameMenuControl();
+        public static void PrepareGame(MainWindow bindMainWindow)
+        {
+            parentWindow = bindMainWindow;
+            // Future: maybe show pre-menu slides?
+            EnterMenu();
+        }
+
+        public static void EnterLevel()
+        {
+            throw new NotImplementedException();
+        }
+        public static void EnterMenu()
+        {
+            parentWindow.SetContent(menuControl);
         }
     }
 }
