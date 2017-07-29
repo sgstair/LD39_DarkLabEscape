@@ -77,6 +77,8 @@
     <Compile Include="GameMenuControl.xaml.cs">
       <DependentUpon>GameMenuControl.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Level.cs" />
+    <Compile Include="LevelRender.cs" />
     <Compile Include="MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>

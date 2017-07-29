@@ -58,31 +58,50 @@ namespace LD39_sgstair
         public void SetContent(FrameworkElement e)
         {
             grid.Children.Clear();
-            e.HorizontalAlignment = HorizontalAlignment.Stretch;
-            e.VerticalAlignment = VerticalAlignment.Stretch;
+            e.HorizontalAlignment = HorizontalAlignment.Left;
+            e.VerticalAlignment = VerticalAlignment.Top;
             e.Margin = new Thickness(0);
             grid.Children.Add(e);
         }
     }
 
-    public class GameAutomation
+    class GameAutomation
     {
         static MainWindow parentWindow;
         static GameMenuControl menuControl = new GameMenuControl();
+        static GameLevelControl levelControl = new GameLevelControl();
         public static void PrepareGame(MainWindow bindMainWindow)
         {
             parentWindow = bindMainWindow;
             // Future: maybe show pre-menu slides?
-            EnterMenu();
+
+            // For now, enter level directly for test.
+            // EnterMenu();
+
+            EnterLevel(0);
         }
 
-        public static void EnterLevel()
+        public static void EnterLevel(int level)
         {
-            throw new NotImplementedException();
+            levelControl.SetLevel(GetLevel(level));
+            parentWindow.SetContent(levelControl);
         }
         public static void EnterMenu()
         {
             parentWindow.SetContent(menuControl);
+        }
+
+        public static void ExitGame()
+        {
+            parentWindow.Close();
+        }
+
+
+        public static Level GetLevel(int index)
+        {
+            Level l =  LevelGenerator.GenerateLevel(Guid.NewGuid());
+            l.LevelIndex = index;
+            return l;
         }
     }
 }

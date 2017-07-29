@@ -24,5 +24,15 @@ namespace LD39_sgstair
         {
             InitializeComponent();
         }
+
+        private void btnStartGame_Click(object sender, RoutedEventArgs e)
+        {
+            GameAutomation.EnterLevel(0);
+        }
+
+        private void btnExitGame_Click(object sender, RoutedEventArgs e)
+        {
+            GameAutomation.ExitGame();
+        }
     }
 }
