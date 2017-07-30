@@ -45,7 +45,6 @@ namespace LD39_sgstair
             KeyDown += GameLevelControl_KeyDown;
 
             GameTimer = new Timer(GameTick);
-            GameTimer.Change(TimeSpan.FromMilliseconds(20), TimeSpan.FromMilliseconds(20));
 
             
         }
@@ -144,57 +143,76 @@ namespace LD39_sgstair
 
         void Update()
         {
-            if (CurrentLevel != null)
+            try
             {
-                // Update the level
-                double curTime = LevelTimer.Elapsed.TotalSeconds;
-                double dTime = curTime - UpdateLastTime;
-                UpdateLastTime = curTime;
-
-                CurrentLevel.UpdateLevel(dTime, leftDown);
-                TestPath = CurrentLevel.TracePath(CurrentLevel.GenerateRayFromAngle(CurrentLevel.LaserAngle), 10);
-
-                CurrentRender.Update(dTime);
-
-                if (leftDown)
+                if (CurrentLevel != null)
                 {
-                    // Check level win condition.
-                    double laserDistance = GetLaserDistance();
-                    TestPath.Trace(laserDistance);
-                    
-                    if(TestPath.HitTarget && laserDistance > TestPath.TracedDistance)
-                    {
-                        // Apply power to the target
-                        CurrentLevel.AppliedTargetPower = true;
+                    // Update the level
+                    double curTime = LevelTimer.Elapsed.TotalSeconds;
+                    double dTime = curTime - UpdateLastTime;
+                    UpdateLastTime = curTime;
 
-                        if (CurrentLevel.TargetPower > 4)
+                    CurrentLevel.UpdateLevel(dTime, leftDown);
+                    TestPath = CurrentLevel.TracePath(CurrentLevel.GenerateRayFromAngle(CurrentLevel.LaserAngle), 10);
+
+                    CurrentRender.Update(dTime);
+
+                    if (leftDown)
+                    {
+                        // Check level win condition.
+                        double laserDistance = GetLaserDistance();
+                        TestPath.Trace(laserDistance);
+
+                        if (TestPath.HitTarget && laserDistance > TestPath.TracedDistance)
                         {
-                            // Level win condition. (todo: fancy graphics & stuff)
-                            if (LevelTestMode)
+                            // Apply power to the target
+                            CurrentLevel.AppliedTargetPower = true;
+
+                            if (CurrentLevel.TargetPower > 4)
                             {
-                                GameAutomation.EnterEditor();
+                                // Level win condition. (todo: fancy graphics & stuff)
+                                GameTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                                if (LevelTestMode)
+                                {
+                                    GameAutomation.EnterEditor();
+                                }
+                                else
+                                {
+                                    GameAutomation.LevelCompleteSuccess();
+                                }
+                                return;
                             }
-                            else
-                            {
-                                GameAutomation.EnterLevel(CurrentLevel.LevelIndex + 1);
-                            }
-                            return;
                         }
+
                     }
 
+                    GameState state = GameAutomation.State;
+                    state.Update(dTime, leftDown);
+
+                    if (state.RemainingPower <= 0)
+                    {
+                        // Lose condition
+                        GameTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                        if (LevelTestMode)
+                        {
+                            GameAutomation.EnterEditor();
+                        }
+                        else
+                        {
+                            GameAutomation.LevelCompleteFailure();
+                        }
+
+                        return;
+                    }
+
+
+                    Redraw();
                 }
-
-                GameState state = GameAutomation.State;
-                state.Update(dTime, leftDown);
-
-                if(state.RemainingPower <= 0)
-                {
-                    // Lose condition
-
-                }
-
-
-                Redraw();
+            }
+            catch(Exception ex)
+            {
+                GameTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                MessageBox.Show("Exception in core game loop. Game is halted.\n" + ex.ToString());
             }
         }
 
@@ -207,6 +225,12 @@ namespace LD39_sgstair
 
             if (CurrentLevel != null && ActualWidth > UiMargin*3 && ActualHeight > (UiMargin*2+UiTop))
             {
+
+                // Draw power bar at the top, before the level - so particles can render above it.
+                Rect PowerBarRect = new Rect(20, UiMargin, ActualWidth - 40, PowerBarSize);
+                DrawPowerBar(dc, PowerBarRect);
+
+
                 Rect levelArea = new Rect(UiMargin, UiTop, ActualWidth - UiMargin*2, ActualHeight - UiMargin - UiTop);
                 CurrentRender.SetRegionRectangle(levelArea);
                 if (leftDown)
@@ -221,12 +245,7 @@ namespace LD39_sgstair
                 CurrentRender.Render(dc);
 
 
-                // Draw power bar at the top
-                
-
-                Rect PowerBarRect = new Rect(20, UiMargin, ActualWidth - 40, PowerBarSize);
-                DrawPowerBar(dc, PowerBarRect);
-
+                // Todo: draw narration box / system messages
 
             }
 

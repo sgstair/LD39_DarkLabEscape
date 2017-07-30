@@ -5,8 +5,19 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:LD39_sgstair"
              mc:Ignorable="d" 
-             d:DesignHeight="300" d:DesignWidth="300">
+             d:DesignHeight="600" d:DesignWidth="600" Background="#171717">
     <Grid>
-            
+        <StackPanel HorizontalAlignment="Stretch" VerticalAlignment="Top"  Margin="0">
+
+            <Label x:Name="Title" Content="Game Over" Foreground="WhiteSmoke" FontSize="48" HorizontalAlignment="Center" />
+            <Label x:Name="Exposition" Content="Exposition" Foreground="WhiteSmoke" FontSize="14" HorizontalAlignment="Center" />
+
+            <Separator Height="40" Margin="0" Visibility="Hidden"/>
+
+            <Label x:Name="Stats" Content="Game Over" Foreground="WhiteSmoke" FontSize="14" HorizontalAlignment="Center" />
+
+            <Separator Height="40" Margin="0" Visibility="Hidden"/>
+            <Button x:Name="btnReturnMenu" Content="Return to main menu"  Width="200" Height="25" FontSize="12" Click="btnReturnMenu_Click"/>
+        </StackPanel>
     </Grid>
 </UserControl>

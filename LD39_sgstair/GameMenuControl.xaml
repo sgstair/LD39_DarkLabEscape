@@ -12,10 +12,13 @@
             <Label x:Name="label" Content="Dark Lab Escape" Foreground="WhiteSmoke" FontSize="72" HorizontalAlignment="Center" />
 
             <Separator Height="40" Margin="0" Visibility="Hidden"/>
-            <Button x:Name="btnStartGame" Content="Start Game" Width="200" Height="35" Click="btnStartGame_Click"/>
+            <Button x:Name="btnStartGame" Content="Start Game" Width="300" Height="45" Click="btnStartGame_Click" FontSize="24"/>
 
             <Separator Height="40" Margin="0" Visibility="Hidden"/>
-            <Button x:Name="btnExitGame" Content="Exit" Width="200" Height="35" Click="btnExitGame_Click"/>
+            <Button x:Name="btnLevelEditor" Content="Level Editor" Width="300" Height="45" FontSize="24" Click="btnLevelEditor_Click"/>
+
+            <Separator Height="40" Margin="0" Visibility="Hidden"/>
+            <Button x:Name="btnExitGame" Content="Exit"  Width="300" Height="45" Click="btnExitGame_Click" FontSize="24"/>
 
         </StackPanel>
     </Grid>

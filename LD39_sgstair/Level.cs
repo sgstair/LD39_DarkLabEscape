@@ -288,6 +288,11 @@ namespace LD39_sgstair
             {
                 // Nearest point on the ray to the target
                 Point nearestPoint = TargetLocation - rayNormal * distanceFromRay;
+
+                // Ensure that this point is in front of the ray, not behind.
+                if ((nearestPoint - startingRay.Origin).Dot(startingRay.Direction) < 0)
+                    return null;
+
                 // Back off the point to the first intersection with the target, in case this makes a difference (it will in some cases)
                 double intersectAngle = Math.Acos(Math.Abs(distanceFromRay) / TargetSize);
                 double adjustAmount = Math.Sin(intersectAngle) * TargetSize;

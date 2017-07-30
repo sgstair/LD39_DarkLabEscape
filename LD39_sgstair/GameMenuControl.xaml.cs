@@ -27,12 +27,17 @@ namespace LD39_sgstair
 
         private void btnStartGame_Click(object sender, RoutedEventArgs e)
         {
-            GameAutomation.EnterLevel(0);
+            GameAutomation.StartNewGame();
         }
 
         private void btnExitGame_Click(object sender, RoutedEventArgs e)
         {
             GameAutomation.ExitGame();
+        }
+
+        private void btnLevelEditor_Click(object sender, RoutedEventArgs e)
+        {
+            GameAutomation.EnterEditor();
         }
     }
 }

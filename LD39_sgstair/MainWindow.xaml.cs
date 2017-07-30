@@ -55,11 +55,21 @@ namespace LD39_sgstair
             }
         }
 
-        public void SetContent(FrameworkElement e)
+        public void SetContent(FrameworkElement e, bool Stretch = true)
         {
             grid.Children.Clear();
-            e.HorizontalAlignment = HorizontalAlignment.Left;
-            e.VerticalAlignment = VerticalAlignment.Top;
+            if (Stretch)
+            {
+                // Stretch used for WPF/UI children
+                e.HorizontalAlignment = HorizontalAlignment.Stretch;
+                e.VerticalAlignment = VerticalAlignment.Stretch;
+            }
+            else
+            {
+                // Non-stretch for rendering stuff.
+                e.HorizontalAlignment = HorizontalAlignment.Left;
+                e.VerticalAlignment = VerticalAlignment.Top;
+            }
             e.Margin = new Thickness(0);
             grid.Children.Add(e);
         }
@@ -67,12 +77,15 @@ namespace LD39_sgstair
 
     class GameAutomation
     {
-        const int LevelCount = 5;
+        const int LevelCount = 6;
 
         static MainWindow parentWindow;
         static GameMenuControl menuControl = new GameMenuControl();
         static GameLevelControl levelControl = new GameLevelControl();
         static LevelEditorControl editorControl = new LevelEditorControl();
+        static GameOverControl gameoverControl = new GameOverControl();
+
+        static Level currentLevel;
 
         public static GameState State = new GameState();
 
@@ -81,11 +94,7 @@ namespace LD39_sgstair
             parentWindow = bindMainWindow;
             // Future: maybe show pre-menu slides?
 
-            // For now, enter level directly for test.
-            // EnterMenu();
-
-            //EnterLevel(0);
-            EnterEditor();
+            EnterMenu();
         }
 
         public static void StartNewGame()
@@ -96,19 +105,33 @@ namespace LD39_sgstair
 
         public static void LevelCompleteSuccess()
         {
-            
+            int currentLevelIndex = currentLevel.LevelIndex;
+            currentLevelIndex++;
+            if(currentLevelIndex == LevelCount)
+            {
+                // Won game
+                State.WonGame = true;
+                EnterGameOverScreen();
+            }
+            else
+            {
+                // Next level
+                EnterLevel(currentLevelIndex);
+            }
         }
 
         public static void LevelCompleteFailure()
         {
-
+            State.WonGame = false;
+            EnterGameOverScreen();
         }
 
 
         public static void EnterLevel(int level)
         {
-            levelControl.SetLevel(GetLevel(level));
-            parentWindow.SetContent(levelControl);
+            currentLevel = GetLevel(level);
+            levelControl.SetLevel(currentLevel);
+            parentWindow.SetContent(levelControl, false);
         }
         public static void EnterMenu()
         {
@@ -117,16 +140,18 @@ namespace LD39_sgstair
 
         public static void EnterEditor()
         {
-            parentWindow.SetContent(editorControl);
+            parentWindow.SetContent(editorControl, false);
         }
 
         public static void EnterGameOverScreen()
         {
-
+            gameoverControl.UpdateText();
+            parentWindow.SetContent(gameoverControl);
         }
 
         public static void EnterTestLevel(Level lvl)
         {
+            State = new GameState();
             levelControl.SetTestLevel(lvl);
             parentWindow.SetContent(levelControl);
         }
@@ -140,9 +165,14 @@ namespace LD39_sgstair
 
         public static Level GetLevel(int index)
         {
-            Level l =  LevelGenerator.GenerateLevel(Guid.NewGuid());
-            l.LevelIndex = index;
-            return l;
+            if(index >= 0 && index < LevelCount)
+            {
+                Level l = Level.LoadLevel($"Level{index}.lvl");
+                l.LevelIndex = index;
+                return l;
+            }
+            
+            return null;
         }
     }
 

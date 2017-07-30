@@ -31,7 +31,9 @@ namespace LD39_sgstair
             LoadTileset();
             UpdateLevelArea();
             Particles = new ParticleSystem(this);
-            Particles.AddEmitter(new ParticleEmitter() { Location = new Point(3, 3), Type = ParticleType.BeamReflect, Value = 0.1 });
+
+            // Particle test
+            //Particles.AddEmitter(new ParticleEmitter() { Location = new Point(3, 3), Type = ParticleType.BeamReflect, Value = 0.1 });
         }
         Level CurrentLevel;
         Rect LevelBounds;

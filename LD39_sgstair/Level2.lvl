@@ -1,0 +1,14 @@
+LaserLocation|10|1.5
+TargetLocation|4|0
+LaserInitialDirection|1|0
+ActiveFeatures|6
+LevelFeature|12|0|10|8|1|1|True|False
+LevelFeature|0|8|-2|0|1|1|True|False
+LevelEntryExitDoor|0|8|10|8|1|1|True|False|False
+LevelEntryExitDoor|-2|0|12|0|1|1|True|False|True
+LevelFeature|7|0|7|5|1|1|True|False
+LevelFeature|7|5|2|5|1|1|True|False
+Decorations|3
+LevelDecoration|5.526315789473685|2.505639097744361|0|0
+LevelDecoration|5.545112781954888|3.5018796992481205|0|0
+LevelDecoration|0.50751879699248126|1.5093984962406013|0|0
