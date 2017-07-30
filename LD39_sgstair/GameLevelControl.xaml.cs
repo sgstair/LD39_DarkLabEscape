@@ -162,14 +162,20 @@ namespace LD39_sgstair
                     
                     if(TestPath.HitTarget && laserDistance > TestPath.TracedDistance)
                     {
-                        // Level win condition. (todo: fancy graphics & stuff)
-                        if (LevelTestMode)
+                        // Apply power to the target
+                        CurrentLevel.AppliedTargetPower = true;
+
+                        if (CurrentLevel.TargetPower > 4)
                         {
-                            GameAutomation.EnterEditor();
-                        }
-                        else
-                        {
-                            GameAutomation.EnterLevel(CurrentLevel.LevelIndex + 1);
+                            // Level win condition. (todo: fancy graphics & stuff)
+                            if (LevelTestMode)
+                            {
+                                GameAutomation.EnterEditor();
+                            }
+                            else
+                            {
+                                GameAutomation.EnterLevel(CurrentLevel.LevelIndex + 1);
+                            }
                         }
                         return;
                     }

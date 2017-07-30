@@ -53,6 +53,14 @@ namespace LD39_sgstair
 
         public double DesiredAngle;
 
+        /// <summary>
+        /// Power applied to the target
+        /// </summary>
+        public double TargetPower = 0;
+        public bool AppliedTargetPower;
+
+
+        public double TargetPowerDecay = 2;
 
         const double DrivePower = 0.6;
         const double InertiaDrag = 0.7;
@@ -65,6 +73,7 @@ namespace LD39_sgstair
             {
                 LaserAngle = Math.Atan2(-LaserInitialDirection.Y, LaserInitialDirection.X);
             }
+            TargetPower = 0;
         }
 
         public void UpdateLevel(double time)
@@ -85,6 +94,16 @@ namespace LD39_sgstair
                 LaserAngle = DesiredAngle;
                 LaserAngleSpeed *= 0.2;
             }
+
+            if(!AppliedTargetPower)
+            {
+                TargetPower = Math.Max(0, TargetPower - TargetPowerDecay * time);
+            }
+            else
+            {
+                TargetPower = TargetPower + time;
+            }
+            AppliedTargetPower = false;
         }
 
         double DesiredOffset()
