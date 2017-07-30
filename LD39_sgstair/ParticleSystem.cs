@@ -64,39 +64,53 @@ namespace LD39_sgstair
 
         public void UpdateParticles(double timeElapsed)
         {
-            // Age out old particles.
-            for (int i = 0; i < ActiveParticles; i++)
+            try
             {
-                AllParticles[i].Age += timeElapsed;
-                if (AllParticles[i].Age > AllParticles[i].Lifespan)
+                // Age out old particles.
+                for (int i = 0; i < ActiveParticles; i++)
                 {
-                    RemoveParticle(i);
-                    i--; // recompute the same slot
+                    AllParticles[i].Age += timeElapsed;
+                    if (AllParticles[i].Age > AllParticles[i].Lifespan)
+                    {
+                        RemoveParticle(i);
+                        i--; // recompute the same slot
+                    }
+                }
+                // Process emitters
+                foreach (ParticleEmitter e in Emitters)
+                {
+                    ProcessEmitter(e, timeElapsed);
+                }
+
+                // Update particles
+                for (int i = 0; i < ActiveParticles; i++)
+                {
+                    AllParticles[i].Type.Update(ref AllParticles[i]);
+                    AllParticles[i].Location += AllParticles[i].Velocity * timeElapsed;
                 }
             }
-            // Process emitters
-            foreach (ParticleEmitter e in Emitters)
+            catch(Exception ex)
             {
-                ProcessEmitter(e, timeElapsed);
-            }
-
-            // Update particles
-            for (int i = 0; i < ActiveParticles; i++)
-            {
-                AllParticles[i].Type.Update(ref AllParticles[i]);
-                AllParticles[i].Location += AllParticles[i].Velocity * timeElapsed;
+                System.Diagnostics.Debug.Print("Particle Update Exception " + ex.ToString());
             }
         }
 
         public void RenderParticles(DrawingContext dc)
         {
-            for (int i = 0; i < ActiveParticles; i++)
+            try
             {
-                Point screenLocation = Render.LevelToScreen(AllParticles[i].Location);
-                double sizeh = Render.Scale * AllParticles[i].SizeH;
-                double sizev = Render.Scale * AllParticles[i].SizeV;
+                for (int i = 0; i < ActiveParticles; i++)
+                {
+                    Point screenLocation = Render.LevelToScreen(AllParticles[i].Location);
+                    double sizeh = Render.Scale * AllParticles[i].SizeH;
+                    double sizev = Render.Scale * AllParticles[i].SizeV;
 
-                dc.DrawEllipse(new SolidColorBrush(AllParticles[i].ParticleColor), null, screenLocation, sizev, sizeh);
+                    dc.DrawEllipse(new SolidColorBrush(AllParticles[i].ParticleColor), null, screenLocation, sizev, sizeh);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.Print("Particle Render Exception " + ex.ToString());
             }
         }
 
@@ -296,7 +310,9 @@ namespace LD39_sgstair
             public void Update(ref Particle p)
             {
                 double life = p.Age / p.Lifespan;
-                p.SizeH = p.SizeV = Math.Sin(life * Math.PI) * 0.05;
+                double size = Math.Sin(life * Math.PI) * 0.05;
+                if (size <= 0) size = 0.001;
+                p.SizeH = p.SizeV = size;
 
                 p.ParticleColor = Color.FromArgb(255, 255, 0, 0);
             }

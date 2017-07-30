@@ -67,10 +67,15 @@ namespace LD39_sgstair
 
     class GameAutomation
     {
+        const int LevelCount = 5;
+
         static MainWindow parentWindow;
         static GameMenuControl menuControl = new GameMenuControl();
         static GameLevelControl levelControl = new GameLevelControl();
         static LevelEditorControl editorControl = new LevelEditorControl();
+
+        public static GameState State = new GameState();
+
         public static void PrepareGame(MainWindow bindMainWindow)
         {
             parentWindow = bindMainWindow;
@@ -82,6 +87,23 @@ namespace LD39_sgstair
             //EnterLevel(0);
             EnterEditor();
         }
+
+        public static void StartNewGame()
+        {
+            State = new GameState();
+            EnterLevel(0);
+        }
+
+        public static void LevelCompleteSuccess()
+        {
+            
+        }
+
+        public static void LevelCompleteFailure()
+        {
+
+        }
+
 
         public static void EnterLevel(int level)
         {
@@ -96,6 +118,11 @@ namespace LD39_sgstair
         public static void EnterEditor()
         {
             parentWindow.SetContent(editorControl);
+        }
+
+        public static void EnterGameOverScreen()
+        {
+
         }
 
         public static void EnterTestLevel(Level lvl)
@@ -118,4 +145,68 @@ namespace LD39_sgstair
             return l;
         }
     }
+
+    class GameState
+    {
+        public const double InitialPower = 30 * 60; // 30 minutes of power
+        public const double LaserUseRate = 10; // When the laser is active, use 10x the baseline power.
+
+        public GameState()
+        {
+            StartingPower = RemainingPower = InitialPower;
+            PowerWhenLaserStarted = RemainingPower;
+        }
+
+        public void Update(double timeElapsed, bool laserOn)
+        {
+            if(laserOn && !lastLaserOn)
+            {
+                PowerWhenLaserStarted = RemainingPower;
+            }
+
+            if(laserOn)
+            {
+                RemainingPower -= timeElapsed * LaserUseRate;
+                LaserPowerHoldTime = 3;
+                LaserOnTime += timeElapsed;
+            }
+            else
+            {
+                RemainingPower -= timeElapsed;
+                LaserPowerHoldTime -= timeElapsed;
+                if(LaserPowerHoldTime < 0)
+                {
+                    LaserPowerHoldTime = 0;
+                    PowerWhenLaserStarted -= LaserUseRate * timeElapsed * 4;
+                    if (PowerWhenLaserStarted < RemainingPower) PowerWhenLaserStarted = RemainingPower;
+                }
+            }
+            lastLaserOn = laserOn;
+        }
+
+        bool lastLaserOn = false;
+
+        public double StartingPower;
+        /// <summary>
+        /// Power is measured in terms of time (time it takes to deplete the backup power of the facility)
+        /// </summary>
+        public double RemainingPower;
+
+        /// <summary>
+        /// Snapshot of what the remaining power was when the laser started operation, animates down to RemainingPower after the laser stops.
+        /// </summary>
+        public double PowerWhenLaserStarted;
+
+        public double LaserPowerHoldTime;
+
+        // Also use this class as the place to hold information about the state of the game.
+
+        public double LaserOnTime = 0;
+        public double LaserItemDamage = 0;
+        public double EncounteredItemValue = 0;
+        public double LaserWallDamage = 0;
+        public int LevelsCompleted = 0;
+        public bool WonGame = false;
+    }
+
 }

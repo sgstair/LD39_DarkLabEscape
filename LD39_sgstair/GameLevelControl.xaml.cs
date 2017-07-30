@@ -22,6 +22,11 @@ namespace LD39_sgstair
     /// </summary>
     public partial class GameLevelControl : UserControl
     {
+        const double UiTop = 70;
+        const double UiMargin = 30;
+        const double PowerBarSize = 30;
+
+
         DrawingVisual dv = new DrawingVisual();
         Level CurrentLevel = null;
         LevelRender CurrentRender = null;
@@ -59,19 +64,16 @@ namespace LD39_sgstair
             }
         }
 
-        Stopwatch timeHeld = new Stopwatch();
         bool leftDown = false;
         private void GameLevelControl_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             leftDown = false;
-            timeHeld.Stop();
             Redraw();
         }
 
         private void GameLevelControl_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             leftDown = true;
-            timeHeld.Restart();
         }
 
         private void GameLevelControl_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -121,7 +123,7 @@ namespace LD39_sgstair
 
         double GetLaserDistance()
         {
-            return timeHeld.Elapsed.TotalSeconds * 2;
+            return CurrentLevel.LaserLength;
         }
 
         void GameTick(object state)
@@ -149,7 +151,7 @@ namespace LD39_sgstair
                 double dTime = curTime - UpdateLastTime;
                 UpdateLastTime = curTime;
 
-                CurrentLevel.UpdateLevel(dTime);
+                CurrentLevel.UpdateLevel(dTime, leftDown);
                 TestPath = CurrentLevel.TracePath(CurrentLevel.GenerateRayFromAngle(CurrentLevel.LaserAngle), 10);
 
                 CurrentRender.Update(dTime);
@@ -176,24 +178,36 @@ namespace LD39_sgstair
                             {
                                 GameAutomation.EnterLevel(CurrentLevel.LevelIndex + 1);
                             }
+                            return;
                         }
-                        return;
                     }
 
                 }
+
+                GameState state = GameAutomation.State;
+                state.Update(dTime, leftDown);
+
+                if(state.RemainingPower <= 0)
+                {
+                    // Lose condition
+
+                }
+
+
                 Redraw();
             }
         }
 
         public void Redraw()
         {
+            if (ActualWidth == 0 || ActualHeight == 0) return;
             DrawingContext dc = dv.RenderOpen();
 
             dc.DrawRectangle(Brushes.Black, null, new Rect(0, 0, ActualWidth, ActualHeight));
 
-            if (CurrentLevel != null)
+            if (CurrentLevel != null && ActualWidth > UiMargin*3 && ActualHeight > (UiMargin*2+UiTop))
             {
-                Rect levelArea = new Rect(0, 0, ActualWidth, ActualHeight);
+                Rect levelArea = new Rect(UiMargin, UiTop, ActualWidth - UiMargin*2, ActualHeight - UiMargin - UiTop);
                 CurrentRender.SetRegionRectangle(levelArea);
                 if (leftDown)
                 {
@@ -205,10 +219,46 @@ namespace LD39_sgstair
                 }
 
                 CurrentRender.Render(dc);
+
+
+                // Draw power bar at the top
+                
+
+                Rect PowerBarRect = new Rect(20, UiMargin, ActualWidth - 40, PowerBarSize);
+                DrawPowerBar(dc, PowerBarRect);
+
+
             }
 
 
             dc.Close();
+        }
+
+        void DrawPowerBar(DrawingContext dc, Rect area)
+        {
+            GameState state = GameAutomation.State;
+
+            dc.DrawRoundedRectangle(Brushes.White, null, area, 10, 10);
+
+            Rect clearArea = new Rect(area.Left + 40, area.Top - 5, area.Width, area.Height);
+            dc.DrawRectangle(Brushes.Black, null, clearArea);
+
+            Rect barArea = new Rect(area.Left + 45, area.Top, area.Width - 45, area.Height - 10);
+            dc.PushClip(new RectangleGeometry(area, 10, 10));
+
+            
+
+            Rect fullArea = new Rect(barArea.Left, barArea.Top, barArea.Width * state.RemainingPower / state.StartingPower, barArea.Height);
+            dc.DrawRectangle(Brushes.Green, null, fullArea);
+            if (state.PowerWhenLaserStarted > state.RemainingPower)
+            {
+                Rect deadArea = new Rect(fullArea.Right, barArea.Top, barArea.Width * (state.PowerWhenLaserStarted - state.RemainingPower) / state.StartingPower, barArea.Height);
+                dc.DrawRectangle(Brushes.Red, null, deadArea);
+            }
+
+
+            dc.Pop();
+
         }
 
 

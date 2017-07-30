@@ -14,6 +14,7 @@ namespace LD39_sgstair
     class Level
     {
         const double TargetSize = 0.13;
+        const double LaserSpeed = 2;
 
         /// <summary>
         /// Location that the laser beam starts from (may be offset due to graphics)
@@ -59,6 +60,8 @@ namespace LD39_sgstair
         public double TargetPower = 0;
         public bool AppliedTargetPower;
 
+        public double LaserLength = 0;
+
 
         public double TargetPowerDecay = 2;
 
@@ -74,9 +77,10 @@ namespace LD39_sgstair
                 LaserAngle = Math.Atan2(-LaserInitialDirection.Y, LaserInitialDirection.X);
             }
             TargetPower = 0;
+            LaserLength = 0;
         }
 
-        public void UpdateLevel(double time)
+        public void UpdateLevel(double time, bool laserOn)
         {
             double difference = DesiredOffset();
 
@@ -93,6 +97,15 @@ namespace LD39_sgstair
             {
                 LaserAngle = DesiredAngle;
                 LaserAngleSpeed *= 0.2;
+            }
+
+            if(laserOn)
+            {
+                LaserLength += time * LaserSpeed;
+            }
+            else
+            {
+                LaserLength = 0;
             }
 
             if(!AppliedTargetPower)
@@ -131,6 +144,11 @@ namespace LD39_sgstair
             {
                 levelData.Add(f.SaveData());
             }
+            levelData.Add(SaveElement("Decorations", Decorations.Count));
+            foreach (var d in Decorations)
+            {
+                levelData.Add(d.SaveData());
+            }
             File.WriteAllLines(filename, levelData);
         }
 
@@ -160,11 +178,23 @@ namespace LD39_sgstair
                         LoadElement(split, out l.LaserInitialDirection);
                         break;
                     case "ActiveFeatures":
-                        int count;
-                        LoadElement(split, out count);
-                        for(int i=0;i<count;i++)
                         {
-                            l.ActiveFeatures.Add(LevelFeature.LoadData(lines[cursor++]));
+                            int count;
+                            LoadElement(split, out count);
+                            for (int i = 0; i < count; i++)
+                            {
+                                l.ActiveFeatures.Add(LevelFeature.LoadData(lines[cursor++]));
+                            }
+                        }
+                        break;
+                    case "Decorations":
+                        {
+                            int count;
+                            LoadElement(split, out count);
+                            for (int i = 0; i < count; i++)
+                            {
+                                l.Decorations.Add(LevelDecoration.LoadData(lines[cursor++]));
+                            }
                         }
                         break;
 
@@ -180,12 +210,12 @@ namespace LD39_sgstair
             if (arg is Point)
             {
                 Point p = (Point)arg;
-                return $"{name}|{p.X:R}:{p.Y:R}";
+                return $"{name}|{p.X:R}|{p.Y:R}";
             }
             if(arg is Vector)
             {
                 Vector v = (Vector)arg;
-                return $"{name}|{v.X:R}:{v.Y:R}";
+                return $"{name}|{v.X:R}|{v.Y:R}";
             }
             if(arg is int)
             {
@@ -452,6 +482,23 @@ namespace LD39_sgstair
         public Point p;
         public int DecorationIndex;
         public double Rotation;
+
+
+
+        public virtual string SaveData()
+        {
+            return $"LevelDecoration|{p.X:R}|{p.Y:R}|{DecorationIndex}|{Rotation:R}";
+        }
+        public static LevelDecoration LoadData(string sourceData)
+        {
+            string[] split = sourceData.Split('|');
+            if (split[0] != "LevelDecoration") throw new Exception("Invalid key in decoration parse");
+            LevelDecoration d = new LevelDecoration();
+            d.p = new Point(double.Parse(split[1]), double.Parse(split[2]));
+            d.DecorationIndex = int.Parse(split[3]);
+            d.Rotation = double.Parse(split[4]);
+            return d;
+        }
     }
 
 
@@ -718,6 +765,7 @@ namespace LD39_sgstair
 
         public virtual string SaveData()
         {
+            // Consider reflecting to get class name here rather than setting LevelFeature for all children that don't override SaveData.
             return $"LevelFeature|{p1.X:R}|{p1.Y:R}|{p2.X:R}|{p2.Y:R}|{leftIndex:R}|{rightIndex:R}|{WillReflect}|{WillRefract}";
         }
 
@@ -727,22 +775,40 @@ namespace LD39_sgstair
             if(split[0] == "LevelFeature")
             {
                 LevelFeature f = new LevelFeature();
-                f.p1 = new Point(double.Parse(split[1]), double.Parse(split[2]));
-                f.p2 = new Point(double.Parse(split[3]), double.Parse(split[4]));
-                f.leftIndex = double.Parse(split[5]);
-                f.rightIndex = double.Parse(split[6]);
-                f.WillReflect = bool.Parse(split[7]);
-                f.WillRefract = bool.Parse(split[8]);
+                f.LoadCommon(split);
                 return f;
+            }
+            else if(split[0] == "LevelEntryExitDoor")
+            {
+                LevelEntryExitDoor d = new LevelEntryExitDoor();
+                d.LoadCommon(split);
+                d.ExitDoor = bool.Parse(split[9]);
+                return d;
             }
             // Future, other types
             throw new Exception($"Unable to load feature of type {split[0]}");
+        }
+        internal void LoadCommon(string[] split)
+        {
+            p1 = new Point(double.Parse(split[1]), double.Parse(split[2]));
+            p2 = new Point(double.Parse(split[3]), double.Parse(split[4]));
+            leftIndex = double.Parse(split[5]);
+            rightIndex = double.Parse(split[6]);
+            WillReflect = bool.Parse(split[7]);
+            WillRefract = bool.Parse(split[8]);
+            savedNormal = null;
         }
     }
 
     class LevelEntryExitDoor : LevelFeature
     {
         public bool ExitDoor;
+
+        public override string SaveData()
+        {
+            return $"LevelEntryExitDoor|{p1.X:R}|{p1.Y:R}|{p2.X:R}|{p2.Y:R}|{leftIndex:R}|{rightIndex:R}|{WillReflect}|{WillRefract}|{ExitDoor}";
+        }
+
     }
 
 

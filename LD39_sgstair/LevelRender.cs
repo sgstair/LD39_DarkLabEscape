@@ -385,9 +385,12 @@ namespace LD39_sgstair
                 }
 
                 // Draw the target location on top of the wall, on both sides
+                int targetTile = 11;
+                if (((LevelEntryExitDoor)f).ExitDoor == false) targetTile = 10;
+
                 center -= v;
-                DrawTileCentered(dc, center, 11, angle);
-                DrawTileCentered(dc, center, 11, angle + Math.PI);
+                DrawTileCentered(dc, center, targetTile, angle);
+                DrawTileCentered(dc, center, targetTile, angle + Math.PI);
             }
             else
             {
