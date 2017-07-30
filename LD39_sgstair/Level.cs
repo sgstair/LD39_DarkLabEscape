@@ -13,8 +13,9 @@ namespace LD39_sgstair
     /// </summary>
     class Level
     {
-        const double TargetSize = 0.13;
+        public const double TargetSize = 0.13;
         const double LaserSpeed = 2;
+        public const double TargetPowerRequired = 4;
 
         /// <summary>
         /// Location that the laser beam starts from (may be offset due to graphics)

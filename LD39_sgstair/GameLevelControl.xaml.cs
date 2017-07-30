@@ -168,7 +168,7 @@ namespace LD39_sgstair
                             // Apply power to the target
                             CurrentLevel.AppliedTargetPower = true;
 
-                            if (CurrentLevel.TargetPower > 4)
+                            if (CurrentLevel.TargetPower > Level.TargetPowerRequired)
                             {
                                 // Level win condition. (todo: fancy graphics & stuff)
                                 GameTimer.Change(Timeout.Infinite, Timeout.Infinite);

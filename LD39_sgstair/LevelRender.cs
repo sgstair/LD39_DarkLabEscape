@@ -309,6 +309,23 @@ namespace LD39_sgstair
             }
 
             Particles.RenderParticles(dc);
+
+            // Draw progess bar for target (if progress is being made)
+            if(CurrentLevel.TargetPower > 0)
+            {
+                double percent = CurrentLevel.TargetPower / Level.TargetPowerRequired;
+                if (percent > 1) percent = 1;
+                double barWidth = 1;
+                double barHeight = 0.2;
+
+                Point topleft = CurrentLevel.TargetLocation + new Vector(-Level.TargetSize * 1.5 - barHeight, -barWidth / 2);
+                Point btmRight = topleft + new Vector(barWidth, barHeight);
+
+                dc.DrawRectangle(Brushes.DarkRed, null, new Rect(LevelToScreen(topleft), LevelToScreen(btmRight)));
+
+                btmRight = topleft + new Vector(barWidth * percent, barHeight);
+                dc.DrawRectangle(Brushes.Red, null, new Rect(LevelToScreen(topleft), LevelToScreen(btmRight)));
+            }
         }
 
         public void DrawDecoration(DrawingContext dc, LevelDecoration dec)
