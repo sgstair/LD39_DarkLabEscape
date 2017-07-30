@@ -49,6 +49,19 @@ namespace LD39_sgstair
         }
 
 
+        void UpdateTargetLocation(LevelEntryExitDoor door)
+        {
+            if (door.ExitDoor == true)
+            {
+                // Compute location of target and set it appropriately
+                Vector v = door.p2 - door.p1;
+                Point center = door.p1 + v / 2;
+                v.Normalize();
+
+                CurrentLevel.TargetLocation = center - v;
+            }
+        }
+
         private void LevelEditorPanel_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             switch (CurrentTool)
@@ -59,17 +72,25 @@ namespace LD39_sgstair
                     {
                         HighlightedFeature.p1 = SnapPoint(HighlightedFeature.p1);
                         HighlightedFeature.p2 = SnapPoint(HighlightedFeature.p2);
+                        if (HighlightedFeature is LevelEntryExitDoor)
+                            UpdateTargetLocation((LevelEntryExitDoor)HighlightedFeature);
                     }
                     else if(HighlightedPoint != null)
                     {
                         foreach(LevelFeature f in MovingFeatures.Keys)
                         {
                             f.ResetNormal();
+                            if(f is LevelEntryExitDoor)
+                            {
+                                UpdateTargetLocation((LevelEntryExitDoor)f);
+                            }
                         }
                     }
                     break;
 
                 case Tool.Wall:
+                case Tool.SetEntrance:
+                case Tool.SetExit:
                     // Complete add
                     if (Adding)
                     {
@@ -77,12 +98,25 @@ namespace LD39_sgstair
                         {
                             // Don't add empty segments
                             CurrentLevel.ActiveFeatures.Add(AddFeature);
+                            if(CurrentTool == Tool.SetExit)
+                            {
+                                UpdateTargetLocation((LevelEntryExitDoor)AddFeature);
+                            }
                         }
                     }
                     Adding = false;
                     AddFeature = null;
                     break;
+
+                case Tool.Decoration:
+                    if(PreviewDecoration != null)
+                    {
+                        CurrentLevel.Decorations.Add(PreviewDecoration);
+                        PreviewDecoration = null;
+                    }
+                    break;
             }
+
             Moving = false;
             CurrentRender.UpdateLevelArea();
             LevelRegions = CurrentLevel.IdentifyRegions();
@@ -111,6 +145,10 @@ namespace LD39_sgstair
                             if (f.p2 == OriginalPosition) MovingFeatures.Add(f, 2);
                         }
                     }
+                    else if(HighlightedDecoration != null)
+                    {
+                        OriginalPosition = HighlightedDecoration.p;
+                    }
                     else
                     {
                         Moving = false; // Nothing to move.
@@ -124,19 +162,30 @@ namespace LD39_sgstair
                         CurrentLevel.ActiveFeatures.Remove(HighlightedFeature);
                         RemoveHighlight();
                     }
+                    if(HighlightedDecoration != null)
+                    {
+                        CurrentLevel.Decorations.Remove(HighlightedDecoration);
+                        RemoveHighlight();
+                    }
                     break;
 
                 case Tool.Wall:
-                    Point p = SnapPoint(CurrentRender.ScreenToLevel(e.GetPosition(this)));
-                    AddFeature = new LevelFeature() { p1 = p, p2 = p };
-                    Adding = true;
+                    {
+                        Point p = SnapPoint(CurrentRender.ScreenToLevel(e.GetPosition(this)));
+                        AddFeature = new LevelFeature() { p1 = p, p2 = p };
+                        Adding = true;
+                    }
                     break;
-
 
                 case Tool.SetEntrance:
-                    break;
                 case Tool.SetExit:
+                    {
+                        Point p = SnapPoint(CurrentRender.ScreenToLevel(e.GetPosition(this)));
+                        AddFeature = new LevelEntryExitDoor() { p1 = p, p2 = p, ExitDoor = CurrentTool == Tool.SetExit };
+                        Adding = true;
+                    }
                     break;
+
                 case Tool.SetLaser:
                     if (CursorPoint != null)
                     {
@@ -198,19 +247,25 @@ namespace LD39_sgstair
                                 }
                             }
                         }
+                        else if(HighlightedDecoration != null)
+                        {
+                            HighlightedDecoration.p = newPosition;
+                        }
                     }
                     else
                     {
-                        HighlightPointElement(levelPoint);
+                        HighlightElement(levelPoint);
                     }
                     break;
 
                 case Tool.Delete:
                 case Tool.ToggleSolid:
-                    HighlightElement(levelPoint);
+                    HighlightElement(levelPoint, false);
                     break;
 
                 case Tool.Wall:
+                case Tool.SetEntrance:
+                case Tool.SetExit:
                     SetCursor(levelPoint);
                     if (Adding)
                     {
@@ -223,15 +278,13 @@ namespace LD39_sgstair
                     break;
 
                 case Tool.Decoration:
+                    SetPreviewDecoration(levelPoint);
                     break;
 
                 case Tool.SetRefract:
                     // Find enclosing region
                     break;
 
-                case Tool.SetEntrance:
-                case Tool.SetExit:
-                    break;
                 case Tool.SetLaser:
                     SetLaserCursor(levelPoint);
                     break;
@@ -244,13 +297,15 @@ namespace LD39_sgstair
         {
             HighlightedFeature = null;
             HighlightedPoint = null;
+            HighlightedDecoration = null;
         }
         void RemoveCursor()
         {
             CursorPoint = null;
+            PreviewDecoration = null;
         }
 
-        void HighlightElement(Point levelLocation)
+        void HighlightElement(Point levelLocation, bool includePoints = true)
         {
             RemoveHighlight();
             SetCursor(levelLocation);
@@ -271,28 +326,45 @@ namespace LD39_sgstair
                 }
             }
 
-        }
-        void HighlightPointElement(Point levelLocation)
-        {
-            HighlightElement(levelLocation);
-
             // See if there's a closer point.
-            var points = CurrentLevel.ActiveFeatures.Select(f => f.p1).Concat(CurrentLevel.ActiveFeatures.Select(f => f.p2)).Distinct();
-
-            foreach(Point p in points)
+            if (includePoints)
             {
-                double distance = (levelLocation - p).Length;
-                if(distance < HighlightDistance)
+                var points = CurrentLevel.ActiveFeatures.Select(f => f.p1).Concat(CurrentLevel.ActiveFeatures.Select(f => f.p2)).Distinct();
+
+                foreach (Point p in points)
                 {
-                    if((HighlightedFeature == null && HighlightedPoint == null) || distance <= HighlightedDistance)
+                    double distance = (levelLocation - p).Length;
+                    if (distance < HighlightDistance)
+                    {
+                        if ((HighlightedFeature == null && HighlightedPoint == null) || distance <= HighlightedDistance)
+                        {
+                            HighlightedFeature = null;
+                            HighlightedPoint = p;
+                            HighlightedDistance = distance;
+                            RemoveCursor();
+                        }
+                    }
+                }
+            }
+
+            // See if there's a decoration to highlight
+            foreach (var decoration in CurrentLevel.Decorations)
+            {
+                Point p = decoration.p;
+                double distance = (levelLocation - p).Length;
+                if (distance < HighlightDistance)
+                {
+                    if ((HighlightedFeature == null && HighlightedPoint == null && HighlightedDecoration == null) || distance <= HighlightedDistance)
                     {
                         HighlightedFeature = null;
-                        HighlightedPoint = p;
+                        HighlightedPoint = null;
+                        HighlightedDecoration = decoration;
                         HighlightedDistance = distance;
                         RemoveCursor();
                     }
                 }
             }
+
         }
 
         void SetCursor(Point levelLocation)
@@ -302,6 +374,11 @@ namespace LD39_sgstair
         void SetLaserCursor(Point levelLocation)
         {
             CursorPoint = SnapLaser(levelLocation);
+        }
+
+        void SetPreviewDecoration(Point levelLocation)
+        {
+            PreviewDecoration = new LevelDecoration() { p = levelLocation, DecorationIndex = CurrentDecorationIndex };
         }
 
         void HighlightRegion(Point levelLocation)
@@ -314,6 +391,10 @@ namespace LD39_sgstair
         Point? CursorPoint;
 
         LevelFeature AddFeature;
+        LevelDecoration PreviewDecoration;
+        LevelDecoration HighlightedDecoration;
+        int CurrentDecorationIndex = 0;
+
 
         Point SnapPoint(Point levelPoint)
         {
@@ -392,11 +473,17 @@ namespace LD39_sgstair
                 {
                     if (HighlightedFeature != null) CurrentRender.HighlightFeature(dc, HighlightedFeature);
                     if (HighlightedPoint != null) CurrentRender.HighlightPoint(dc, HighlightedPoint.Value);
+                    if (HighlightedDecoration != null) CurrentRender.HighlightPoint(dc, HighlightedDecoration.p);
                 }
 
                 if(Adding)
                 {
                     CurrentRender.HighlightFeature(dc, AddFeature);
+                }
+
+                if(PreviewDecoration != null)
+                {
+                    CurrentRender.DrawDecoration(dc, PreviewDecoration);
                 }
 
                 if(CursorPoint != null)

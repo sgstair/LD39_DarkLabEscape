@@ -13,7 +13,7 @@ namespace LD39_sgstair
     /// </summary>
     class Level
     {
-        const double TargetSize = 0.1;
+        const double TargetSize = 0.13;
 
         /// <summary>
         /// Location that the laser beam starts from (may be offset due to graphics)
@@ -34,6 +34,9 @@ namespace LD39_sgstair
         /// List of walls, reflectors, lens elements, etc.
         /// </summary>
         public List<LevelFeature> ActiveFeatures = new List<LevelFeature>();
+
+
+        public List<LevelDecoration> Decorations = new List<LevelDecoration>();
 
         public int LevelIndex = -1;
 
@@ -425,6 +428,15 @@ namespace LD39_sgstair
 
     }
 
+    public class LevelDecoration
+    {
+        public Point p;
+        public int DecorationIndex;
+        public double Rotation;
+    }
+
+
+
     class RegionTrackingPath
     {
         public Point p;
@@ -577,6 +589,9 @@ namespace LD39_sgstair
         }
     }
 
+
+
+
     class LevelFeature
     {
         /// <summary>
@@ -704,6 +719,11 @@ namespace LD39_sgstair
             // Future, other types
             throw new Exception($"Unable to load feature of type {split[0]}");
         }
+    }
+
+    class LevelEntryExitDoor : LevelFeature
+    {
+        public bool ExitDoor;
     }
 
 

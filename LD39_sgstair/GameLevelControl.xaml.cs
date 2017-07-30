@@ -152,6 +152,8 @@ namespace LD39_sgstair
                 CurrentLevel.UpdateLevel(dTime);
                 TestPath = CurrentLevel.TracePath(CurrentLevel.GenerateRayFromAngle(CurrentLevel.LaserAngle), 10);
 
+                CurrentRender.Update(dTime);
+
                 if (leftDown)
                 {
                     // Check level win condition.
