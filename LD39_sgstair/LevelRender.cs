@@ -76,6 +76,7 @@ namespace LD39_sgstair
 
 
         List<ParticleEmitter> PathEmitters = new List<ParticleEmitter>();
+        List<SoundSource> PathSoundEmitters = new List<SoundSource>();
         void SetPathLength(int usedEmitters)
         {
             if (usedEmitters < PathEmitters.Count)
@@ -84,8 +85,10 @@ namespace LD39_sgstair
                 for (int i = usedEmitters; i < PathEmitters.Count; i++)
                 {
                     Particles.RemoveEmitter(PathEmitters[i]);
+                    GameAutomation.Sound.RemoveSource(PathSoundEmitters[i]);
                 }
                 PathEmitters.RemoveRange(usedEmitters, PathEmitters.Count - usedEmitters);
+                PathSoundEmitters.RemoveRange(usedEmitters, PathEmitters.Count - usedEmitters);
             }
         }
         void SetPathEmitter(int index, Point location)
@@ -94,8 +97,13 @@ namespace LD39_sgstair
             {
                 PathEmitters.Add(new ParticleEmitter() { Type = ParticleType.BeamReflect });
                 Particles.AddEmitter(PathEmitters.Last());
+                PathSoundEmitters.Add(new SoundSource() { Type = SoundType.Wall, Volume = 0, Frequency = 1200 });
+                GameAutomation.Sound.AddSource(PathSoundEmitters.Last());
             }
             PathEmitters[index].Location = location;
+            SetSoundPan(PathSoundEmitters[index], location);
+            PathSoundEmitters[index].Volume = 0.05;
+
         }
 
         void SetSoundPan(SoundSource s, Point location)

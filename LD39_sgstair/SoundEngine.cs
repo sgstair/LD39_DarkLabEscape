@@ -184,11 +184,24 @@ namespace LD39_sgstair
             }
         }
 
-        void AccumulateFilterNoise(double[] buffer, int firstIndex, int sampleCount, double frequency, double left, double right, ref double valuestorage1, ref double valuestorage2)
+        void AccumulateFilterNoise(double[] buffer, int firstIndex, int sampleCount, double frequency, double filter, double left, double right, ref double valuestorage1, ref double valuestorage2, ref double valuestorage3)
         {
+            double rate = frequency / SampleRate;
 
+            for (int i = 0; i < sampleCount; i++)
+            {
 
+                double value = valuestorage2;
+                buffer[(firstIndex + i) * 2] += value * left;
+                buffer[(firstIndex + i) * 2 + 1] += value * right;
 
+                valuestorage1 += rate;
+                if (valuestorage1 > 1)
+                {
+                    valuestorage1 -= 1;
+                    valuestorage2 = r.NextDouble() * 2 - 1;
+                }
+            }
         }
 
         void RenderLaser(SoundSource s, double[] AccumulateBuffer, int firstIndex, int sampleCount)
@@ -231,6 +244,16 @@ namespace LD39_sgstair
 
         void RenderWall(SoundSource s, double[] AccumulateBuffer, int firstIndex, int sampleCount)
         {
+            double volLeft, volRight;
+            ComputeVolumes(s, out volLeft, out volRight);
+            if (volLeft == 0 && volRight == 0) return;
+
+
+            double filter = 1000;
+            double freq = s.Frequency;
+            double mod = Math.Min(s.Age, 5)/5;
+            //freq = freq * (1 - (0.5 * mod));
+            AccumulateFilterNoise(AccumulateBuffer, firstIndex, sampleCount, freq, filter, volLeft, volRight, ref s.Value1, ref s.Value2, ref s.Value3);
         }
     }
 
