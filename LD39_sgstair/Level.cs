@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -37,12 +38,165 @@ namespace LD39_sgstair
         public int LevelIndex = -1;
 
 
+        /// <summary>
+        /// Current laser heading
+        /// </summary>
+        public double LaserAngle;
+
+        /// <summary>
+        /// Laser rotational speed
+        /// </summary>
+        public double LaserAngleSpeed;
+
+        public double DesiredAngle;
+
+
+        const double DrivePower = 0.6;
+        const double InertiaDrag = 0.7;
+        const double SnapDistance = 0.002;
+
+        public void StartLevel()
+        {
+            LaserAngle = 0;
+            if(LaserInitialDirection.LengthSquared != 0)
+            {
+                LaserAngle = Math.Atan2(-LaserInitialDirection.Y, LaserInitialDirection.X);
+            }
+        }
+
+        public void UpdateLevel(double time)
+        {
+            double difference = DesiredOffset();
+
+            double drag = Math.Pow(InertiaDrag, time);
+            LaserAngleSpeed = LaserAngleSpeed * drag + Math.Sign(difference) * time * DrivePower;
+
+            // Cheat and limit the speed as a function of distance.
+            double maxSpeed = Math.Abs(difference * 5);
+            LaserAngleSpeed = Math.Min(maxSpeed, LaserAngleSpeed);
+            LaserAngleSpeed = Math.Max(-maxSpeed, LaserAngleSpeed);
+
+            LaserAngle += LaserAngleSpeed * time;
+            if(Math.Abs(LaserAngle-DesiredAngle) < SnapDistance)
+            {
+                LaserAngle = DesiredAngle;
+                LaserAngleSpeed *= 0.2;
+            }
+        }
+
+        double DesiredOffset()
+        {
+            double a = DesiredAngle - LaserAngle;
+            while (a < Math.PI) a += Math.PI * 2;
+            while (a > Math.PI) a -= Math.PI * 2;
+            return a;
+        }
+
+        public void SetDesiredVector(Vector v)
+        {
+            DesiredAngle = Math.Atan2(-v.Y, v.X);
+        }
+
+
+        public void SaveLevel(string filename)
+        {
+            List<string> levelData = new List<string>();
+            levelData.Add(SaveElement("LaserLocation", LaserLocation));
+            levelData.Add(SaveElement("TargetLocation", TargetLocation));
+            levelData.Add(SaveElement("LaserInitialDirection", LaserInitialDirection));
+            levelData.Add(SaveElement("ActiveFeatures", ActiveFeatures.Count));
+            foreach(var f in ActiveFeatures)
+            {
+                levelData.Add(f.SaveData());
+            }
+            File.WriteAllLines(filename, levelData);
+        }
+
+        public static Level LoadLevel(string filename)
+        {
+            string[] lines = File.ReadAllLines(filename);
+            return LoadLevel(lines);
+        }
+
+        public static Level LoadLevel(string[] lines)
+        {
+            int cursor = 0;
+            Level l = new Level();
+            while(cursor < lines.Length)
+            {
+                string[] split = lines[cursor].Split('|');
+                cursor++;
+                switch(split[0])
+                {
+                    case "LaserLocation":
+                        LoadElement(split, out l.LaserLocation);
+                        break;
+                    case "TargetLocation":
+                        LoadElement(split, out l.TargetLocation);
+                        break;
+                    case "LaserInitialDirection":
+                        LoadElement(split, out l.LaserInitialDirection);
+                        break;
+                    case "ActiveFeatures":
+                        int count;
+                        LoadElement(split, out count);
+                        for(int i=0;i<count;i++)
+                        {
+                            l.ActiveFeatures.Add(LevelFeature.LoadData(lines[cursor++]));
+                        }
+                        break;
+
+                    default:
+                        throw new Exception("Testing: Should not have unexpected elements in file!");
+                }
+            }
+            return l;
+        }
+
+        string SaveElement(string name, object arg)
+        {
+            if (arg is Point)
+            {
+                Point p = (Point)arg;
+                return $"{name}|{p.X:R}:{p.Y:R}";
+            }
+            if(arg is Vector)
+            {
+                Vector v = (Vector)arg;
+                return $"{name}|{v.X:R}:{v.Y:R}";
+            }
+            if(arg is int)
+            {
+                return $"{name}|{(int)arg}";
+            }
+            throw new Exception($"Unable to save element {name}");
+        }
+        static void LoadElement(string[] pieces, out Point p)
+        {
+            if (pieces.Length < 3) throw new ArgumentOutOfRangeException();
+            p = new Point(double.Parse(pieces[1]), double.Parse(pieces[2]));
+        }
+        static void LoadElement(string[] pieces, out Vector v)
+        {
+            if (pieces.Length < 3) throw new ArgumentOutOfRangeException();
+            v = new Vector(double.Parse(pieces[1]), double.Parse(pieces[2]));
+        }
+        static void LoadElement(string[] pieces, out int i)
+        {
+            if (pieces.Length < 2) throw new ArgumentOutOfRangeException();
+            i = int.Parse(pieces[1]);
+        }
+
+
+
+
         public Rect LevelArea
         {
             get
             {
                 var xs = ActiveFeatures.Select(f => f.p1.X).Concat(ActiveFeatures.Select(f => f.p2.X));
                 var ys = ActiveFeatures.Select(f => f.p1.Y).Concat(ActiveFeatures.Select(f => f.p2.Y));
+                if (xs.Count() == 0) return new Rect(0, 0, 1, 1);
                 return new Rect(new Point(xs.Min(), ys.Min()), new Point(xs.Max(), ys.Max()));
             }
         }
@@ -157,7 +311,179 @@ namespace LD39_sgstair
             return null;
         }
 
+        public List<LevelRegion> IdentifyRegions()
+        {
+            List<LevelRegion> regionsOut = new List<LevelRegion>();
+            // Untag all features
+            foreach (LevelFeature f in ActiveFeatures)
+            {
+                f.Tag = false;
+
+            }
+            while (true)
+            {
+                // Find an untagged region
+                LevelFeature startingFeature = null;
+                foreach (LevelFeature f in ActiveFeatures)
+                {
+                    if (f.Tag == false)
+                    {
+                        startingFeature = f;
+                        f.Tag = true;
+                        break;
+                    }
+                }
+                if (startingFeature == null)
+                {
+                    break;
+                }
+
+                // Find all loops attached to this region.
+                List<RegionTrackingPath> path = new List<RegionTrackingPath>();
+                RegionTrackingPath p = new RegionTrackingPath() { f = startingFeature, p = startingFeature.p1 };
+                path.Add(p);
+                RecursiveFindLoops(path, regionsOut);
+            }
+
+            return regionsOut;
+        }
+
+        void RecursiveFindLoops(List<RegionTrackingPath> path, List<LevelRegion> regionsOut)
+        {
+            // Find any loops involving the last point added to the path
+            // If we find a loop, this branch is dead. Other branches will find the other loops
+            RegionTrackingPath last = path.Last();
+            foreach(RegionTrackingPath prev in path.Take(path.Count-1))
+            {
+                if(last.p == prev.p)
+                {
+                    // found a loop. Create a Region for it.
+                    LevelRegion r = new LevelRegion();
+                    r.Origin = last.p;
+                    foreach(RegionTrackingPath node in path.Reverse<RegionTrackingPath>())
+                    {
+                        if (node.p == r.Origin && r.Perimeter.Count > 0) break;
+                        r.Perimeter.Add(node.f);
+                    }
+
+                    // Exclude identical regions.
+                    HashSet<LevelFeature> usedFeatures = new HashSet<LevelFeature>();
+                    foreach (LevelFeature f in r.Perimeter) usedFeatures.Add(f);
+
+                    foreach(LevelRegion lr in regionsOut)
+                    {
+                        if(lr.Perimeter.Count == r.Perimeter.Count)
+                        {
+                            bool equivalent = true;
+                            foreach(LevelFeature f in lr.Perimeter)
+                            {
+                                if(!usedFeatures.Contains(f))
+                                {
+                                    equivalent = false; break;
+                                }
+                            }
+                            if (equivalent) return; // Don't add equivalent regions
+                        }
+                    }
+
+                    r.ComputeRect();
+                    r.Area = r.ComputeArea();
+                    regionsOut.Add(r);
+                    return;
+                }
+            }
+            
+
+            // Find all the paths out of the last node which are not also the last feature.
+            Queue<RegionTrackingPath> newPaths = new Queue<RegionTrackingPath>();
+            foreach (LevelFeature f in ActiveFeatures)
+            {
+                if (f != last.f)
+                {
+                    Point? newPoint = f.Connect(last.p);
+                    if(newPoint != null)
+                    {
+                        f.Tag = true;
+                        newPaths.Enqueue(new RegionTrackingPath() { f = f, p = newPoint.Value });
+                    }
+                }
+            }
+            while(newPaths.Count > 1)
+            {
+                // Generate new path lists as we are split across multiple directions
+                List<RegionTrackingPath> newPath = new List<RegionTrackingPath>(path);
+                newPath.Add(newPaths.Dequeue());
+                RecursiveFindLoops(newPath, regionsOut);
+            }
+            if(newPaths.Count == 1)
+            {
+                // Continue to use the passed path
+                path.Add(newPaths.Dequeue());
+                RecursiveFindLoops(path, regionsOut);
+            }
+        }
+
     }
+
+    class RegionTrackingPath
+    {
+        public Point p;
+        public LevelFeature f;
+    }
+
+    class LevelRegion
+    {
+        public Point Origin;
+        public List<LevelFeature> Perimeter = new List<LevelFeature>();
+        public double Area;
+        public Rect EnclosingRect;
+        public void ComputeRect()
+        {
+            var xs = Perimeter.Select(f => f.p1.X).Concat(Perimeter.Select(f => f.p2.X));
+            var ys = Perimeter.Select(f => f.p1.Y).Concat(Perimeter.Select(f => f.p2.Y));
+            if (xs.Count() == 0) { EnclosingRect = new Rect(0, 0, 0, 0); return; }
+            EnclosingRect = new Rect(new Point(xs.Min(), ys.Min()), new Point(xs.Max(), ys.Max()));
+        }
+
+        public double ComputeArea()
+        {
+            Point cur, last;
+            cur = last = new Point();
+            cur = Origin;
+            double totalArea = 0;
+            for(int i=0;i<Perimeter.Count-1;i++)
+            {
+                cur = Perimeter[i].Connect(cur).Value;
+                if(i>0)
+                {
+                    Vector dLast = (last - Origin);
+                    Vector nLast = new Vector(dLast.Y, -dLast.X);
+                    nLast.Normalize();
+                    // compute area for this triangle.
+                    double l1 = (dLast).Length;
+                    double l2 = (cur - last).Dot(nLast);
+                    totalArea += l1 * l2 / 2;
+                }
+                last = cur;
+
+            }
+            return Math.Abs(totalArea);
+        }
+
+        public Point[] ClosedForm()
+        {
+            List<Point> points = new List<Point>();
+            points.Add(Origin);
+            Point p = Origin;
+            for(int i=0;i<Perimeter.Count-1;i++)
+            {
+                p = Perimeter[i].Connect(p).Value;
+                points.Add(p);
+            }
+            return points.ToArray();
+        }
+    }
+
 
     class RefractiveIndex
     {
@@ -266,6 +592,35 @@ namespace LD39_sgstair
         public bool WillReflect = true;
         public bool WillRefract = false;
 
+        /// <summary>
+        /// Used for feature region identification.
+        /// </summary>
+        public bool Tag;
+
+        public Point? Connect(Point origin)
+        {
+            if (p1 == origin) return p2;
+            if(p2 == origin) return p1;
+            return null;
+        }
+
+        public Vector NormalFrom(Point origin)
+        {
+            if (p1 == origin) return lineNormal;
+            if (p2 == origin) return -lineNormal;
+            throw new Exception("Invalid input");
+        }
+
+
+        public override string ToString()
+        {
+            return $"LevelFeature(({p1})-({p2}))";
+        }
+
+        public virtual void ResetNormal()
+        {
+            savedNormal = null;
+        }
 
         Vector? savedNormal;
         /// <summary>
@@ -304,11 +659,51 @@ namespace LD39_sgstair
             return intersectionPoint;
         }
 
+
+        /// <summary>
+        /// Determine how far away this point is from the element (for level editor, mainly)
+        /// </summary>
+        public virtual double DistanceToPoint(Point nearbyPoint)
+        {
+            // Does ray intersect with this feature?
+            double distance = (nearbyPoint - p1).Dot(lineNormal); // Minimum distance of ray starting point from line (positive = left of line)
+            Point intersectionPoint = nearbyPoint - lineNormal * distance;;
+            // is the intersection point within this line segment?
+            if ((intersectionPoint - p1).Dot(p2 - p1) < 0) return (nearbyPoint-p1).Length;  // Beyond p1 on that side
+            if ((intersectionPoint - p2).Dot(p1 - p2) < 0) return (nearbyPoint-p2).Length; // Beyond p2 on that side
+
+            // Intersection point is inside the line segment, return this point.
+            return Math.Abs(distance);
+        }
+
+
         public virtual Vector SurfaceNormal(Point intersectionPoint)
         {
             return lineNormal; // Normal is always the same.
         }
 
+        public virtual string SaveData()
+        {
+            return $"LevelFeature|{p1.X:R}|{p1.Y:R}|{p2.X:R}|{p2.Y:R}|{leftIndex:R}|{rightIndex:R}|{WillReflect}|{WillRefract}";
+        }
+
+        public static LevelFeature LoadData(string feature)
+        {
+            string[] split = feature.Split('|');
+            if(split[0] == "LevelFeature")
+            {
+                LevelFeature f = new LevelFeature();
+                f.p1 = new Point(double.Parse(split[1]), double.Parse(split[2]));
+                f.p2 = new Point(double.Parse(split[3]), double.Parse(split[4]));
+                f.leftIndex = double.Parse(split[5]);
+                f.rightIndex = double.Parse(split[6]);
+                f.WillReflect = bool.Parse(split[7]);
+                f.WillRefract = bool.Parse(split[8]);
+                return f;
+            }
+            // Future, other types
+            throw new Exception($"Unable to load feature of type {split[0]}");
+        }
     }
 
 

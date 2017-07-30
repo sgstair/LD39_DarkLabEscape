@@ -70,6 +70,7 @@ namespace LD39_sgstair
         static MainWindow parentWindow;
         static GameMenuControl menuControl = new GameMenuControl();
         static GameLevelControl levelControl = new GameLevelControl();
+        static LevelEditorControl editorControl = new LevelEditorControl();
         public static void PrepareGame(MainWindow bindMainWindow)
         {
             parentWindow = bindMainWindow;
@@ -78,7 +79,8 @@ namespace LD39_sgstair
             // For now, enter level directly for test.
             // EnterMenu();
 
-            EnterLevel(0);
+            //EnterLevel(0);
+            EnterEditor();
         }
 
         public static void EnterLevel(int level)
@@ -90,6 +92,18 @@ namespace LD39_sgstair
         {
             parentWindow.SetContent(menuControl);
         }
+
+        public static void EnterEditor()
+        {
+            parentWindow.SetContent(editorControl);
+        }
+
+        public static void EnterTestLevel(Level lvl)
+        {
+            levelControl.SetTestLevel(lvl);
+            parentWindow.SetContent(levelControl);
+        }
+
 
         public static void ExitGame()
         {

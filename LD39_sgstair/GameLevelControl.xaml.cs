@@ -37,7 +37,7 @@ namespace LD39_sgstair
             MouseMove += GameLevelControl_MouseMove;
             MouseLeftButtonDown += GameLevelControl_MouseLeftButtonDown;
             MouseLeftButtonUp += GameLevelControl_MouseLeftButtonUp;
-
+            KeyDown += GameLevelControl_KeyDown;
 
             GameTimer = new Timer(GameTick);
             GameTimer.Change(TimeSpan.FromMilliseconds(20), TimeSpan.FromMilliseconds(20));
@@ -45,6 +45,19 @@ namespace LD39_sgstair
             
         }
 
+        private void GameLevelControl_KeyDown(object sender, KeyEventArgs e)
+        {
+            switch(e.Key)
+            {
+                case Key.Escape:
+                    if(LevelTestMode)
+                    {
+                        GameAutomation.EnterEditor();
+                        return;
+                    }
+                    break;
+            }
+        }
 
         Stopwatch timeHeld = new Stopwatch();
         bool leftDown = false;
@@ -72,21 +85,37 @@ namespace LD39_sgstair
             {
                 Point mp = e.GetPosition(this);
                 Point lp = CurrentRender.ScreenToLevel(mp);
-                TestPath = CurrentLevel.TracePath(CurrentLevel.GenerateRayFromPoint(lp), 10);
-
+                CurrentLevel.SetDesiredVector(lp - CurrentLevel.LaserLocation);
                 Redraw();
             }
         }
 
         RayPath TestPath = null;
+        bool LevelTestMode = false;
 
         internal void SetLevel(Level levelContent)
         {
+            LevelTestMode = false;
+            GameTimer.Change(Timeout.Infinite, Timeout.Infinite);
             CurrentLevel = levelContent;
+            CurrentLevel.StartLevel();
             CurrentRender = new LevelRender(CurrentLevel);
             leftDown = false;
             TestPath = null;
+
+            LevelTimer = new Stopwatch();
+            LevelTimer.Start();
+            UpdateLastTime = 0;
+            GameTick(null);
+            GameTimer.Change(TimeSpan.FromMilliseconds(20), TimeSpan.FromMilliseconds(20));
+
             Redraw();
+        }
+
+        internal void SetTestLevel(Level levelContent)
+        {
+            SetLevel(levelContent);
+            LevelTestMode = true;
         }
 
 
@@ -108,10 +137,21 @@ namespace LD39_sgstair
         }
 
 
+        Stopwatch LevelTimer;
+        double UpdateLastTime;
+
         void Update()
         {
             if (CurrentLevel != null)
             {
+                // Update the level
+                double curTime = LevelTimer.Elapsed.TotalSeconds;
+                double dTime = curTime - UpdateLastTime;
+                UpdateLastTime = curTime;
+
+                CurrentLevel.UpdateLevel(dTime);
+                TestPath = CurrentLevel.TracePath(CurrentLevel.GenerateRayFromAngle(CurrentLevel.LaserAngle), 10);
+
                 if (leftDown)
                 {
                     // Check level win condition.
@@ -121,12 +161,19 @@ namespace LD39_sgstair
                     if(TestPath.HitTarget && laserDistance > TestPath.TracedDistance)
                     {
                         // Level win condition. (todo: fancy graphics & stuff)
-                        GameAutomation.EnterLevel(CurrentLevel.LevelIndex + 1);
+                        if (LevelTestMode)
+                        {
+                            GameAutomation.EnterEditor();
+                        }
+                        else
+                        {
+                            GameAutomation.EnterLevel(CurrentLevel.LevelIndex + 1);
+                        }
                         return;
                     }
 
-                    Redraw();
                 }
+                Redraw();
             }
         }
 

@@ -63,6 +63,14 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="LevelEditorControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="LevelEditorPanel.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -71,6 +79,7 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="FileDialog.cs" />
     <Compile Include="GameLevelControl.xaml.cs">
       <DependentUpon>GameLevelControl.xaml</DependentUpon>
     </Compile>
@@ -78,6 +87,12 @@
       <DependentUpon>GameMenuControl.xaml</DependentUpon>
     </Compile>
     <Compile Include="Level.cs" />
+    <Compile Include="LevelEditorControl.xaml.cs">
+      <DependentUpon>LevelEditorControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="LevelEditorPanel.xaml.cs">
+      <DependentUpon>LevelEditorPanel.xaml</DependentUpon>
+    </Compile>
     <Compile Include="LevelRender.cs" />
     <Compile Include="MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
@@ -110,6 +125,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Tiles_Src.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
