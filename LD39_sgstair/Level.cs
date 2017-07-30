@@ -89,7 +89,7 @@ namespace LD39_sgstair
             LaserAngleSpeed = LaserAngleSpeed * drag + Math.Sign(difference) * time * DrivePower;
 
             // Cheat and limit the speed as a function of distance.
-            double maxSpeed = Math.Abs(difference * 5);
+            double maxSpeed = Math.Abs(difference * 2.5);
             LaserAngleSpeed = Math.Min(maxSpeed, LaserAngleSpeed);
             LaserAngleSpeed = Math.Max(-maxSpeed, LaserAngleSpeed);
 

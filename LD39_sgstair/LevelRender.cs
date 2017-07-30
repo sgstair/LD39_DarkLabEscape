@@ -54,6 +54,27 @@ namespace LD39_sgstair
 
         }
 
+        SoundSource RotateSound;
+        void UpdateRotateSound()
+        {
+            if(RotateSound == null)
+            {
+                RotateSound = new SoundSource() { Type = SoundType.Rotate, Volume = 0 };
+                GameAutomation.Sound.AddSource(RotateSound);
+            }
+
+            SetSoundPan(RotateSound, CurrentLevel.LaserLocation);
+            double rotateIntensity = (Math.Abs(CurrentLevel.LaserAngleSpeed) - 0.1) / 1;
+            rotateIntensity = Math.Max(Math.Min(rotateIntensity, 1), 0);
+            double rotateSpeed = (Math.Abs(CurrentLevel.LaserAngleSpeed)) / 1;
+            rotateSpeed = Math.Min(rotateSpeed, 1);
+
+            RotateSound.Frequency = 120 * rotateSpeed;
+            RotateSound.Volume = rotateIntensity * 0.07;
+        }
+
+
+
         List<ParticleEmitter> PathEmitters = new List<ParticleEmitter>();
         void SetPathLength(int usedEmitters)
         {
@@ -77,8 +98,19 @@ namespace LD39_sgstair
             PathEmitters[index].Location = location;
         }
 
+        void SetSoundPan(SoundSource s, Point location)
+        {
+            // Pan from -.5 to +.5
+            double pan = ((location.X - LevelBounds.X) / LevelBounds.Width) - 0.5;
+            s.Pan = pan;
+        }
+
+
         ParticleEmitter LaserEmitter = null;
         ParticleEmitter TargetEmitter = null;
+        SoundSource LaserSoundSource = null;
+        SoundSource TargetSoundSource = null;
+
 
         void DestroyTargetEmitter()
         {
@@ -86,6 +118,8 @@ namespace LD39_sgstair
             {
                 Particles.RemoveEmitter(TargetEmitter);
                 TargetEmitter = null;
+                GameAutomation.Sound.RemoveSource(TargetSoundSource);
+                TargetSoundSource = null;
             }
         }
         void CreateTargetEmitter(Point location)
@@ -94,8 +128,18 @@ namespace LD39_sgstair
             {
                 TargetEmitter = new ParticleEmitter() { Type = ParticleType.HitTarget};
                 Particles.AddEmitter(TargetEmitter);
+                TargetSoundSource = new SoundSource() { Type = SoundType.Target, Volume = 0 };
+                GameAutomation.Sound.AddSource(TargetSoundSource);
             }
             TargetEmitter.Location = location;
+
+            double percentComplete = CurrentLevel.TargetPower / Level.TargetPowerRequired;
+            if (percentComplete < 0) percentComplete = 0;
+            if (percentComplete > 1) percentComplete = 1;
+            TargetSoundSource.Frequency = 220 * Math.Pow(2, percentComplete * 3);
+            SetSoundPan(TargetSoundSource, location);
+            TargetSoundSource.Volume = 0.1;
+
         }
 
         void CreateLaserEmitter(Point location, double percentActive)
@@ -104,9 +148,14 @@ namespace LD39_sgstair
             {
                 LaserEmitter = new ParticleEmitter() { Type = ParticleType.BeamStart };
                 Particles.AddEmitter(LaserEmitter);
+                LaserSoundSource = new SoundSource() { Type = SoundType.Laser, Volume=0 };
+                GameAutomation.Sound.AddSource(LaserSoundSource);
             }
             LaserEmitter.Location = location;
             LaserEmitter.Value = percentActive * 0.12;
+            SetSoundPan(LaserSoundSource, location);
+            LaserSoundSource.Volume = 0.07 * percentActive;
+            LaserSoundSource.Frequency = 60 + 220 * percentActive;
         }
         void DestroyLaserEmitter()
         {
@@ -114,6 +163,8 @@ namespace LD39_sgstair
             {
                 Particles.RemoveEmitter(LaserEmitter);
                 LaserEmitter = null;
+                GameAutomation.Sound.RemoveSource(LaserSoundSource);
+                LaserSoundSource = null;
             }
         }
 
@@ -245,6 +296,7 @@ namespace LD39_sgstair
         public void Update(double elapsedTime)
         {
             Particles.UpdateParticles(elapsedTime);
+            UpdateRotateSound();
         }
 
         public void Render(DrawingContext dc)

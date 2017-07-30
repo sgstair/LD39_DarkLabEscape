@@ -8,6 +8,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
@@ -77,6 +78,8 @@ namespace LD39_sgstair
 
     class GameAutomation
     {
+        public static SoundEngine Sound;
+
         const int LevelCount = 6;
 
         static MainWindow parentWindow;
@@ -92,6 +95,8 @@ namespace LD39_sgstair
         public static void PrepareGame(MainWindow bindMainWindow)
         {
             parentWindow = bindMainWindow;
+            WindowInteropHelper interop = new WindowInteropHelper(parentWindow);
+            Sound = new SoundEngine(interop.EnsureHandle());
             // Future: maybe show pre-menu slides?
 
             EnterMenu();
@@ -129,22 +134,26 @@ namespace LD39_sgstair
 
         public static void EnterLevel(int level)
         {
+            Sound.SoftReset();
             currentLevel = GetLevel(level);
             levelControl.SetLevel(currentLevel);
             parentWindow.SetContent(levelControl, false);
         }
         public static void EnterMenu()
         {
+            Sound.SoftReset();
             parentWindow.SetContent(menuControl);
         }
 
         public static void EnterEditor()
         {
+            Sound.SoftReset();
             parentWindow.SetContent(editorControl, false);
         }
 
         public static void EnterGameOverScreen()
         {
+            Sound.SoftReset();
             gameoverControl.UpdateText();
             parentWindow.SetContent(gameoverControl);
         }
@@ -159,6 +168,8 @@ namespace LD39_sgstair
 
         public static void ExitGame()
         {
+            Sound.SoftReset();
+            System.Threading.Thread.Sleep(100);
             parentWindow.Close();
         }
 
