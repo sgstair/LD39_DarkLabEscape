@@ -70,6 +70,8 @@ namespace LD39_sgstair
         const double InertiaDrag = 0.7;
         const double SnapDistance = 0.002;
 
+        public bool Complete = false;
+
         public void StartLevel()
         {
             LaserAngle = 0;
@@ -79,6 +81,7 @@ namespace LD39_sgstair
             }
             TargetPower = 0;
             LaserLength = 0;
+            Complete = false;
         }
 
         public void UpdateLevel(double time, bool laserOn)

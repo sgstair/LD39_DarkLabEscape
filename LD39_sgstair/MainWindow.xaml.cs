@@ -79,6 +79,7 @@ namespace LD39_sgstair
     class GameAutomation
     {
         public static SoundEngine Sound;
+        public static NarrationSystem Narration;
 
         const int LevelCount = 6;
 
@@ -97,6 +98,7 @@ namespace LD39_sgstair
             parentWindow = bindMainWindow;
             WindowInteropHelper interop = new WindowInteropHelper(parentWindow);
             Sound = new SoundEngine(interop.EnsureHandle());
+            Narration = new NarrationSystem();
             // Future: maybe show pre-menu slides?
 
             EnterMenu();
@@ -190,13 +192,15 @@ namespace LD39_sgstair
     class GameState
     {
         public const double InitialPower = 30 * 60; // 30 minutes of power
-        public const double LaserUseRate = 10; // When the laser is active, use 10x the baseline power.
+        public const double LaserUseRate = 15; // When the laser is active, use 15x the baseline power.
 
         public GameState()
         {
             StartingPower = RemainingPower = InitialPower;
             PowerWhenLaserStarted = RemainingPower;
         }
+
+        public double LastPercent = 0.99;
 
         public void Update(double timeElapsed, bool laserOn)
         {
@@ -210,10 +214,15 @@ namespace LD39_sgstair
                 RemainingPower -= timeElapsed * LaserUseRate;
                 LaserPowerHoldTime = 3;
                 LaserOnTime += timeElapsed;
+                LaserSessionTime += timeElapsed;
             }
             else
             {
-                RemainingPower -= timeElapsed;
+                LaserSessionTime = 0;
+                if (!DrainPaused)
+                {
+                    RemainingPower -= timeElapsed;
+                }
                 LaserPowerHoldTime -= timeElapsed;
                 if(LaserPowerHoldTime < 0)
                 {
@@ -223,6 +232,16 @@ namespace LD39_sgstair
                 }
             }
             lastLaserOn = laserOn;
+
+            double curPercent = RemainingPower / StartingPower;
+            int lastPercentDecade = (int)Math.Floor(LastPercent * 10);
+            int curPercentDecade = (int)Math.Floor(curPercent * 10);
+            if(curPercentDecade < lastPercentDecade)
+            {
+                // Initiate system message warning of the reduced power
+                GameAutomation.Narration.DisplaySystemText($"Backup power at {lastPercentDecade}0%");
+            }
+            LastPercent = curPercent;
         }
 
         bool lastLaserOn = false;
@@ -239,6 +258,30 @@ namespace LD39_sgstair
         public double PowerWhenLaserStarted;
 
         public double LaserPowerHoldTime;
+
+        public double LaserSessionTime;
+
+        public bool ScriptedOff = false;
+        public bool DrainPaused = false;
+
+        public double LightLevel
+        {
+            get
+            {
+                // Base light level
+                double baseLight = 0.2 + (RemainingPower / StartingPower)*0.8;
+
+                
+                if(LaserSessionTime > 0 && LaserSessionTime < 0.2)
+                {
+                    double beamReduce = Math.Sin(LaserSessionTime / 0.2 * Math.PI);
+                    baseLight = baseLight * (1 - beamReduce * 0.4); // Power dip due to starting laser.
+                }
+
+                if (ScriptedOff) baseLight = 0.1;
+                return baseLight;
+            }
+        }
 
         // Also use this class as the place to hold information about the state of the game.
 

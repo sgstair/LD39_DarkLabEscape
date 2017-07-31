@@ -327,26 +327,35 @@ namespace LD39_sgstair
             DrawTiles(dc);
 
 
-            DrawTileCentered(dc, CurrentLevel.LaserLocation, 8, CurrentLevel.LaserAngle - Math.PI/2);
+            DrawTileCentered(dc, CurrentLevel.LaserLocation, 8, CurrentLevel.LaserAngle - Math.PI / 2);
 
             //dc.DrawEllipse(Brushes.Blue, null, LevelToScreen(CurrentLevel.LaserLocation), 10, 10);
             //dc.DrawEllipse(Brushes.Red, null, LevelToScreen(CurrentLevel.TargetLocation), 8, 8);
 
             foreach (LevelFeature f in CurrentLevel.ActiveFeatures)
             {
-                DrawFeature(dc,f);
+                DrawFeature(dc, f);
             }
             // Draw the wall joining points at all of the corner points
-            foreach(Point p in CurrentLevel.ActiveFeatures.Select(f => f.p1).Concat(CurrentLevel.ActiveFeatures.Select(f => f.p2)).Distinct())
+            foreach (Point p in CurrentLevel.ActiveFeatures.Select(f => f.p1).Concat(CurrentLevel.ActiveFeatures.Select(f => f.p2)).Distinct())
             {
                 DrawTileCentered(dc, p, 5);
             }
 
 
-            foreach(LevelDecoration decoration in CurrentLevel.Decorations)
+            foreach (LevelDecoration decoration in CurrentLevel.Decorations)
             {
                 DrawDecoration(dc, decoration);
             }
+
+            // Everything before this point is subject to dimming
+
+            if (!DesignMode && LevelOutlinePath != null)
+            {
+                Color dimColor = Color.FromArgb((byte)(255 * (1 - GameAutomation.State.LightLevel)), 0, 0, 0);
+                dc.DrawGeometry(new SolidColorBrush(dimColor), null, LevelOutlinePath);
+            }
+
 
             if (DrawPath != null)
             {
@@ -371,7 +380,7 @@ namespace LD39_sgstair
             Particles.RenderParticles(dc);
 
             // Draw progess bar for target (if progress is being made)
-            if(CurrentLevel.TargetPower > 0)
+            if (CurrentLevel.TargetPower > 0 && !CurrentLevel.Complete)
             {
                 double percent = CurrentLevel.TargetPower / Level.TargetPowerRequired;
                 if (percent > 1) percent = 1;

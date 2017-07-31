@@ -40,6 +40,16 @@ namespace LD39_sgstair
             
 
             SetLevel(LevelGenerator.GenerateLevel(Guid.NewGuid()));
+            try
+            {
+                SetLevel(GameAutomation.GetLevel(0));
+
+            }
+            catch(Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(ex.ToString());
+            }
+
             SetTool(Tool.Move);
         }
 

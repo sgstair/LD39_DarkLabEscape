@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -84,10 +85,13 @@ namespace LD39_sgstair
         {
             if(CurrentLevel != null)
             {
-                Point mp = e.GetPosition(this);
-                Point lp = CurrentRender.ScreenToLevel(mp);
-                CurrentLevel.SetDesiredVector(lp - CurrentLevel.LaserLocation);
-                Redraw();
+                if (GameAutomation.Narration.GameInteractive)
+                {
+                    Point mp = e.GetPosition(this);
+                    Point lp = CurrentRender.ScreenToLevel(mp);
+                    CurrentLevel.SetDesiredVector(lp - CurrentLevel.LaserLocation);
+                    Redraw();
+                }
             }
         }
 
@@ -104,9 +108,16 @@ namespace LD39_sgstair
             leftDown = false;
             TestPath = null;
 
+            LevelFinished = false;
+            LevelWon = false;
+
+            GameAutomation.Narration.Reset();
+            GameAutomation.Narration.QueuePreLevelContent(levelContent.LevelIndex);
+
             LevelTimer = new Stopwatch();
             LevelTimer.Start();
             UpdateLastTime = 0;
+
             GameTick(null);
             GameTimer.Change(TimeSpan.FromMilliseconds(20), TimeSpan.FromMilliseconds(20));
 
@@ -116,6 +127,7 @@ namespace LD39_sgstair
         internal void SetTestLevel(Level levelContent)
         {
             SetLevel(levelContent);
+            GameAutomation.Narration.Reset();
             LevelTestMode = true;
         }
 
@@ -141,6 +153,9 @@ namespace LD39_sgstair
         Stopwatch LevelTimer;
         double UpdateLastTime;
 
+        bool LevelFinished;
+        bool LevelWon;
+
         void Update()
         {
             try
@@ -152,12 +167,18 @@ namespace LD39_sgstair
                     double dTime = curTime - UpdateLastTime;
                     UpdateLastTime = curTime;
 
-                    CurrentLevel.UpdateLevel(dTime, leftDown);
+                    GameAutomation.Narration.Update(dTime);
+
+                    bool laserOn = leftDown && GameAutomation.Narration.GameInteractive;
+
+
+
+                    CurrentLevel.UpdateLevel(dTime, laserOn);
                     TestPath = CurrentLevel.TracePath(CurrentLevel.GenerateRayFromAngle(CurrentLevel.LaserAngle), 10);
 
                     CurrentRender.Update(dTime);
 
-                    if (leftDown)
+                    if (laserOn)
                     {
                         // Check level win condition.
                         double laserDistance = GetLaserDistance();
@@ -171,28 +192,29 @@ namespace LD39_sgstair
                             if (CurrentLevel.TargetPower > Level.TargetPowerRequired)
                             {
                                 // Level win condition. (todo: fancy graphics & stuff)
-                                GameTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                                LevelFinished = true;
+                                LevelWon = true;
+                                CurrentLevel.Complete = true;
                                 if (LevelTestMode)
                                 {
+                                    GameTimer.Change(Timeout.Infinite, Timeout.Infinite);
                                     GameAutomation.EnterEditor();
+                                    return;
                                 }
-                                else
-                                {
-                                    GameAutomation.LevelCompleteSuccess();
-                                }
-                                return;
+                                GameAutomation.Narration.QueuePostLevelContent(CurrentLevel.LevelIndex);
                             }
                         }
 
                     }
 
                     GameState state = GameAutomation.State;
-                    state.Update(dTime, leftDown);
+                    state.Update(dTime, laserOn);
 
                     if (state.RemainingPower <= 0)
                     {
-                        // Lose condition
                         GameTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                        // Todo: use narration for this path too.
+                        // Lose condition
                         if (LevelTestMode)
                         {
                             GameAutomation.EnterEditor();
@@ -206,6 +228,28 @@ namespace LD39_sgstair
                     }
 
 
+                    if(GameAutomation.Narration.LevelExit)
+                    {
+                        GameTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                        if (LevelTestMode)
+                        {
+                            GameAutomation.EnterEditor();
+                        }
+                        else
+                        {
+                            if (LevelWon)
+                            {
+                                GameAutomation.LevelCompleteSuccess();
+                            }
+                            else
+                            {
+                                GameAutomation.LevelCompleteFailure();
+                            }
+
+                        }
+                        return;
+                    }
+
                     Redraw();
                 }
             }
@@ -216,6 +260,8 @@ namespace LD39_sgstair
             }
         }
 
+
+        Typeface font = new Typeface("Calibri");
         public void Redraw()
         {
             if (ActualWidth == 0 || ActualHeight == 0) return;
@@ -245,8 +291,48 @@ namespace LD39_sgstair
                 CurrentRender.Render(dc);
 
 
-                // Todo: draw narration box / system messages
+                // Draw Narration Box
+                double BoxWidth = ActualWidth / 2;
+                double BoxHeight = ActualHeight / 5;
 
+                var n = GameAutomation.Narration;
+                if(n.CurrentEvent != null)
+                {
+                    if(n.BoxVisiblePercent > 0.5)
+                    {
+                        Rect rc = new Rect(ActualWidth - 10 - BoxWidth, ActualHeight - 10 - BoxHeight, BoxWidth, BoxHeight);
+                        Pen p = new Pen(Brushes.DarkBlue, 4);
+
+                        dc.DrawRoundedRectangle(Brushes.White, p, rc, 10, 10);
+
+                        int textCharacters = (int)Math.Round(n.CurrentEvent.Text.Length * n.TextDisplayPercent);
+                        string displayText = n.CurrentEvent.Text.Substring(0, textCharacters);
+                        FormattedText t = new FormattedText(displayText, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, font, 24, Brushes.Black);
+                        t.MaxTextWidth = BoxWidth - 20;
+                        t.MaxTextHeight = BoxHeight - 20;
+
+                        dc.DrawText(t, rc.TopLeft + new Vector(10, 10));
+
+                    }
+                }
+
+                // Draw System Messages
+                if(n.SystemTextMessage != null)
+                {
+                    FormattedText t = new FormattedText(n.SystemTextMessage, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, font, 48, Brushes.Red);
+
+
+                    double y = ActualHeight / 3;
+                    Point textPt = new Point((ActualWidth - t.Width) / 2, y);
+                    double boxWidth = t.Width + 40;
+                    double boxHeight = t.Height + 40;
+                    Rect rc = new Rect(textPt + new Vector(-20, -20), new Size(boxWidth, boxHeight));
+
+
+                    dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(74, 0, 0, 0)), null, rc);
+                    dc.DrawText(t, textPt);
+
+                }
             }
 
 
