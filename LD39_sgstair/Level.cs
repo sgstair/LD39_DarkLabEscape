@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -214,12 +215,12 @@ namespace LD39_sgstair
             if (arg is Point)
             {
                 Point p = (Point)arg;
-                return $"{name}|{p.X:R}|{p.Y:R}";
+                return $"{name}|{SaveDouble(p.X)}|{SaveDouble(p.Y)}";
             }
             if(arg is Vector)
             {
                 Vector v = (Vector)arg;
-                return $"{name}|{v.X:R}|{v.Y:R}";
+                return $"{name}|{SaveDouble(v.X)}|{SaveDouble(v.Y)}";
             }
             if(arg is int)
             {
@@ -230,12 +231,12 @@ namespace LD39_sgstair
         static void LoadElement(string[] pieces, out Point p)
         {
             if (pieces.Length < 3) throw new ArgumentOutOfRangeException();
-            p = new Point(double.Parse(pieces[1]), double.Parse(pieces[2]));
+            p = new Point(LoadDouble(pieces[1]), LoadDouble(pieces[2]));
         }
         static void LoadElement(string[] pieces, out Vector v)
         {
             if (pieces.Length < 3) throw new ArgumentOutOfRangeException();
-            v = new Vector(double.Parse(pieces[1]), double.Parse(pieces[2]));
+            v = new Vector(LoadDouble(pieces[1]), LoadDouble(pieces[2]));
         }
         static void LoadElement(string[] pieces, out int i)
         {
@@ -243,7 +244,8 @@ namespace LD39_sgstair
             i = int.Parse(pieces[1]);
         }
 
-
+        public static string SaveDouble(double n) { return n.ToString("R", CultureInfo.InvariantCulture); }
+        public static double LoadDouble(string s) { return double.Parse(s, CultureInfo.InvariantCulture); }
 
 
         public Rect LevelArea
@@ -496,16 +498,16 @@ namespace LD39_sgstair
 
         public virtual string SaveData()
         {
-            return $"LevelDecoration|{p.X:R}|{p.Y:R}|{DecorationIndex}|{Rotation:R}";
+            return $"LevelDecoration|{Level.SaveDouble(p.X)}|{Level.SaveDouble(p.Y)}|{DecorationIndex}|{Level.SaveDouble(Rotation)}";
         }
         public static LevelDecoration LoadData(string sourceData)
         {
             string[] split = sourceData.Split('|');
             if (split[0] != "LevelDecoration") throw new Exception("Invalid key in decoration parse");
             LevelDecoration d = new LevelDecoration();
-            d.p = new Point(double.Parse(split[1]), double.Parse(split[2]));
+            d.p = new Point(Level.LoadDouble(split[1]), Level.LoadDouble(split[2]));
             d.DecorationIndex = int.Parse(split[3]);
-            d.Rotation = double.Parse(split[4]);
+            d.Rotation = Level.LoadDouble(split[4]);
             return d;
         }
     }
@@ -775,7 +777,7 @@ namespace LD39_sgstair
         public virtual string SaveData()
         {
             // Consider reflecting to get class name here rather than setting LevelFeature for all children that don't override SaveData.
-            return $"LevelFeature|{p1.X:R}|{p1.Y:R}|{p2.X:R}|{p2.Y:R}|{leftIndex:R}|{rightIndex:R}|{WillReflect}|{WillRefract}";
+            return $"LevelFeature|{Level.SaveDouble(p1.X)}|{Level.SaveDouble(p1.Y)}|{Level.SaveDouble(p2.X)}|{Level.SaveDouble(p2.Y)}|{Level.SaveDouble(leftIndex)}|{Level.SaveDouble(rightIndex)}|{WillReflect}|{WillRefract}";
         }
 
         public static LevelFeature LoadData(string feature)
@@ -799,10 +801,10 @@ namespace LD39_sgstair
         }
         internal void LoadCommon(string[] split)
         {
-            p1 = new Point(double.Parse(split[1]), double.Parse(split[2]));
-            p2 = new Point(double.Parse(split[3]), double.Parse(split[4]));
-            leftIndex = double.Parse(split[5]);
-            rightIndex = double.Parse(split[6]);
+            p1 = new Point(Level.LoadDouble(split[1]), Level.LoadDouble(split[2]));
+            p2 = new Point(Level.LoadDouble(split[3]), Level.LoadDouble(split[4]));
+            leftIndex = Level.LoadDouble(split[5]);
+            rightIndex = Level.LoadDouble(split[6]);
             WillReflect = bool.Parse(split[7]);
             WillRefract = bool.Parse(split[8]);
             savedNormal = null;
@@ -815,7 +817,7 @@ namespace LD39_sgstair
 
         public override string SaveData()
         {
-            return $"LevelEntryExitDoor|{p1.X:R}|{p1.Y:R}|{p2.X:R}|{p2.Y:R}|{leftIndex:R}|{rightIndex:R}|{WillReflect}|{WillRefract}|{ExitDoor}";
+            return $"LevelEntryExitDoor|{Level.SaveDouble(p1.X)}|{Level.SaveDouble(p1.Y)}|{Level.SaveDouble(p2.X)}|{Level.SaveDouble(p2.Y)}|{Level.SaveDouble(leftIndex)}|{Level.SaveDouble(rightIndex)}|{WillReflect}|{WillRefract}|{ExitDoor}";
         }
 
     }
